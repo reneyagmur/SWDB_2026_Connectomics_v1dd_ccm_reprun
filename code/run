@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
-set -ex
+set -euo pipefail
 
-# This is the master script for the capsule. When you click "Reproducible Run", the code in this file will execute.
-# This is the master script for the capsule. When you click "Reproducible Run", the code in this file will execute.
-jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=-1 --output-dir /results "/code/workshops/Functional Data Cell-Cell Correlations.ipynb"
+# ETL notebooks — must run in order: 01-03 write data; 04 reads/validates
+jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=-1 \
+    --output-dir /results \
+    "/code/etl_v1dd_01_cave_dataset_celltypes.ipynb"
+
+jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=-1 \
+    --output-dir /results \
+    "/code/etl_v1dd_02_synapses.ipynb"
+
+jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=-1 \
+    --output-dir /results \
+    "/code/etl_v1dd_03_somafeatures.ipynb"
