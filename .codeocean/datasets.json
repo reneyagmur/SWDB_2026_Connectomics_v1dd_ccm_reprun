@@ -2,6 +2,10 @@
 	"version": 1,
 	"attached_datasets": [
 		{
+			"id": "3722628c-d77b-42c6-b733-26ff0b96b657",
+			"mount": "v1dd_v1196_soma_features"
+		},
+		{
 			"id": "aafc99cc-92ee-4d04-b152-92f1063a3268",
 			"mount": "v1dd_1196"
 		}
