@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Emit AIND metadata sidecars for the derived V1DD connectivity data asset.
 
-Writes three files to the output directory:
+Writes three files to the output directory alongside the CCM output:
 
 * ``subject.json``          -- inherited verbatim from the input data asset
 * ``data_description.json`` -- derived from the input asset's, re-stamped as ``derived``
@@ -45,10 +45,10 @@ INPUT_ASSET = Path("/data/v1dd_1196")
 #: CodeOcean captures /results as the data asset; metadata belongs at its root.
 OUTPUT_DIR = Path("/results")
 
-#: Used only if the CCM settings cannot be read. The real name is resolved at runtime
-#: from the output_root the ETL notebooks actually wrote to, so that the metadata always
-#: describes where the data went even if CCC_OUTPUT_ROOT repoints it.
-FALLBACK_ASSET_NAME = "409828_V1DD_CCM_materialization_1196"
+#: Label for the derived asset. ``code/run`` passes the full name via --asset-name; this
+#: is the stem used when running by hand, with the creation datetime appended to satisfy
+#: AIND's DataRegex.DATA pattern (<label>_<YYYY-MM-DD_HH-MM-SS>).
+ASSET_LABEL = "409828_V1DD_CCM_materialization_1196"
 
 #: CAVE materialization this release is built from; recorded as the code version.
 RELEASE = "1196"
@@ -126,27 +126,20 @@ def _git_commit(repo: Path) -> str | None:
         return None
 
 
-def resolve_asset_name(explicit: str | None = None) -> str:
-    """Name of the derived asset, taken from where the ETL actually wrote.
+def resolve_asset_name(explicit: str | None, creation_time: datetime) -> str:
+    """Name of the derived asset.
 
-    ``code/run`` exports ``CCC_OUTPUT_ROOT`` with a creation-datetime suffix, and
-    ``ccc_config.yaml`` holds a fallback. Reading the *resolved* setting rather than the
-    environment variable means the metadata follows the data even if the override is
-    ignored or the config is edited by hand.
+    The layout is flat -- the CCM tables and these sidecars share one directory, so the
+    asset name is a *label*, not a path component, and cannot be read back off the
+    output root. ``code/run`` passes it via --asset-name so a single timestamp drives the
+    name and processing.json alike; running by hand falls back to the label plus the
+    creation datetime, which keeps the DataRegex.DATA form either way.
     """
     if explicit:
         return explicit
-    try:
-        from connects_common_connectivity.config import get_settings
-
-        name = Path(str(get_settings().output_root)).name
-        if name:
-            return name
-        log.warning("output_root resolved to a rootless path; using fallback name")
-    except Exception as exc:
-        log.warning("could not read output_root from the CCM settings (%s); "
-                    "falling back to %s", exc, FALLBACK_ASSET_NAME)
-    return FALLBACK_ASSET_NAME
+    name = f"{ASSET_LABEL}_{creation_time:%Y-%m-%d_%H-%M-%S}"
+    log.info("no --asset-name given; generated %s", name)
+    return name
 
 
 def _package_provenance(name: str) -> dict:
@@ -345,8 +338,9 @@ def build_processing(
                 experimenters=experimenters,
                 start_date_time=cursor,
                 end_date_time=end,
-                # AssetPath must be relative to the metadata directory, not absolute
-                output_path=asset_name,
+                # AssetPath is relative to the metadata directory. The layout is flat,
+                # so each step writes its tables into the asset root itself.
+                output_path=".",
                 notes=notes,
             )
         )
@@ -376,7 +370,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--start-time", default=None,
                         help="ISO-8601 pipeline start; defaults to now (UTC)")
     parser.add_argument("--asset-name", default=None,
-                        help="overrides the name resolved from the CCM output_root")
+                        help="full asset name; defaults to ASSET_LABEL + creation datetime")
     parser.add_argument("--experimenters", nargs="*", default=None,
                         help="overrides EXPERIMENTERS; falls back to inherited investigators")
     parser.add_argument("--strict", action="store_true",
@@ -395,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    asset_name = resolve_asset_name(args.asset_name)
+    asset_name = resolve_asset_name(args.asset_name, creation_time)
     log.info("asset name: %s", asset_name)
 
     # --- subject.json -------------------------------------------------------
