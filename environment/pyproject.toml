@@ -1,5 +1,6 @@
 [project]
 dependencies = [
+    "aind-data-schema==2.8.1",
     "caveclient==8.2.1",
     "cloud-volume==12.14.3",
     "hdmf==6.1.0",
