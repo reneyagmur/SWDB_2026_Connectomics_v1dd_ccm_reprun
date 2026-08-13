@@ -1,4 +1,3 @@
-@ -0,0 +1,446 @@
 #!/usr/bin/env python
 """Emit AIND metadata sidecars for the derived V1DD connectivity data asset.
 
