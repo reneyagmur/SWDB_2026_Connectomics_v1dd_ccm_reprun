@@ -1,7 +1,7 @@
 # Package-wide settings for ConnectsCommonConnectivity.
 # Discovered by walking up from cwd (pyproject.toml/ruff/pytest pattern).
 # Edit this file (or set CCC_OUTPUT_ROOT) to repoint writers/readers.
-# Fallback only. code/run exports CCC_OUTPUT_ROOT with a creation-datetime suffix
-# (AIND DataRegex.DATA form), which takes precedence over this value.
+# Fallback only. code/run exports CCC_OUTPUT_ROOT pointing at an asset subdirectory
+# with a creation-datetime suffix (AIND DataRegex.DATA form), which wins over this.
 output_root: /results/409828_V1DD_CCM_materialization_1196/
 dry_run: false

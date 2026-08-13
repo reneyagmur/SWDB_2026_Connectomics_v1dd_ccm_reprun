@@ -7,14 +7,13 @@ RUN_EPOCH=$(date -u +%s)
 RUN_START=$(date -u -d "@$RUN_EPOCH" +%Y-%m-%dT%H:%M:%SZ)     # ISO, for processing.json
 ASSET_STAMP=$(date -u -d "@$RUN_EPOCH" +%Y-%m-%d_%H-%M-%S)    # AIND DataRegex.DATA form
 
-# Flat layout: the CCM tables and the AIND metadata sidecars both live at the asset
-# root, so /results *is* the asset and data_description.name describes it directly.
-export CCC_OUTPUT_ROOT="/results"
-
-# The asset name is now a label rather than a directory, so it is passed explicitly to
-# metadata.py. DataRegex.DATA form: <label>_<YYYY-MM-DD_HH-MM-SS>.
+# The asset is a subdirectory of /results named in AIND DataRegex.DATA form
+# (<label>_<YYYY-MM-DD_HH-MM-SS>). CCM tables and the metadata sidecars both go inside
+# it, so data_description.name matches the directory it sits in. The executed notebooks
+# and cave_provenance.json stay at the /results top level, outside the asset.
 ASSET_NAME="409828_V1DD_CCM_materialization_1196_${ASSET_STAMP}"
-echo "Output asset: $ASSET_NAME  (written to $CCC_OUTPUT_ROOT)"
+export CCC_OUTPUT_ROOT="/results/${ASSET_NAME}"
+echo "Output asset: $CCC_OUTPUT_ROOT"
 
 # ETL notebooks — must run in order: 01-03 write data; 04 reads/validates
 jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=-1 \
@@ -30,5 +29,10 @@ jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=-1 \
     "/code/etl_v1dd_03_somafeatures.ipynb"
 
 # AIND metadata sidecars: subject.json, data_description.json, processing.json.
-# Written to /results (the data asset root), not into the CCM output_root.
-python -u /code/metadata.py --start-time "$RUN_START" --asset-name "$ASSET_NAME"
+# Written inside the asset directory, alongside the CCM tables. --results-dir is where
+# the executed notebooks and cave_provenance.json live, which is one level up.
+python -u /code/metadata.py \
+    --start-time "$RUN_START" \
+    --asset-name "$ASSET_NAME" \
+    --results-dir /results \
+    --output-dir "$CCC_OUTPUT_ROOT"

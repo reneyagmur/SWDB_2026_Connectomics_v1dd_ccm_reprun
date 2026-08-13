@@ -9,7 +9,8 @@ Writes three files to the output directory alongside the CCM output:
 
 Run after the ETL notebooks::
 
-    python -u /code/metadata.py --start-time "$RUN_START"
+    python -u /code/metadata.py --start-time "$RUN_START" \
+        --asset-name "$ASSET_NAME" --results-dir /results --output-dir "$CCC_OUTPUT_ROOT"
 
 Written against aind-data-schema 2.8.1.
 """
@@ -42,8 +43,9 @@ from aind_data_schema_models.process_names import ProcessName
 #: institutional fields of data_description.json.
 INPUT_ASSET = Path("/data/v1dd_1196")
 
-#: CodeOcean captures /results as the data asset; metadata belongs at its root.
-OUTPUT_DIR = Path("/results")
+#: CodeOcean run directory. Holds the executed notebooks and cave_provenance.json, and
+#: contains the asset subdirectory. Not itself the asset.
+RESULTS_DIR = Path("/results")
 
 #: Label for the derived asset. ``code/run`` passes the full name via --asset-name; this
 #: is the stem used when running by hand, with the creation datetime appended to satisfy
@@ -127,12 +129,10 @@ def _git_commit(repo: Path) -> str | None:
 
 
 def resolve_asset_name(explicit: str | None, creation_time: datetime) -> str:
-    """Name of the derived asset.
+    """Name of the derived asset, which is also its directory name under ``/results``.
 
-    The layout is flat -- the CCM tables and these sidecars share one directory, so the
-    asset name is a *label*, not a path component, and cannot be read back off the
-    output root. ``code/run`` passes it via --asset-name so a single timestamp drives the
-    name and processing.json alike; running by hand falls back to the label plus the
+    ``code/run`` passes it via --asset-name so that one timestamp drives the directory,
+    the name and processing.json alike. Running by hand falls back to the label plus the
     creation datetime, which keeps the DataRegex.DATA form either way.
     """
     if explicit:
@@ -280,9 +280,13 @@ def build_data_description(
 
 
 def build_processing(
-    start_time: datetime, results_dir: Path, experimenters: list[str], asset_name: str
+    start_time: datetime, results_dir: Path, experimenters: list[str]
 ) -> Processing:
-    """One DataProcess per ETL notebook, chained end-to-start."""
+    """One DataProcess per ETL notebook, chained end-to-start.
+
+    ``results_dir`` is the CodeOcean run directory (one level above the asset), because
+    that is where the executed notebooks and cave_provenance.json land.
+    """
     ccm = _package_provenance(CORE_PACKAGE)
     cave = _cave_provenance(results_dir)
 
@@ -338,8 +342,9 @@ def build_processing(
                 experimenters=experimenters,
                 start_date_time=cursor,
                 end_date_time=end,
-                # AssetPath is relative to the metadata directory. The layout is flat,
-                # so each step writes its tables into the asset root itself.
+                # AssetPath is relative to the metadata directory. The sidecars live
+                # inside the asset, and each step writes its tables into that same
+                # directory, so the output is the asset root itself.
                 output_path=".",
                 notes=notes,
             )
@@ -365,8 +370,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-asset", type=Path, default=INPUT_ASSET,
                         help="asset supplying subject / institutional metadata")
-    parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR,
-                        help="where the three sidecars are written")
+    parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR,
+                        help="CodeOcean run dir holding the executed notebooks and "
+                             "cave_provenance.json (one level above the asset)")
+    parser.add_argument("--output-dir", type=Path, default=None,
+                        help="asset dir the sidecars are written into; "
+                             "defaults to <results-dir>/<asset-name>")
     parser.add_argument("--start-time", default=None,
                         help="ISO-8601 pipeline start; defaults to now (UTC)")
     parser.add_argument("--asset-name", default=None,
@@ -387,27 +396,28 @@ def main(argv: list[str] | None = None) -> int:
         start_time = datetime.now(timezone.utc)
     creation_time = datetime.now(timezone.utc)
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-
     asset_name = resolve_asset_name(args.asset_name, creation_time)
+    output_dir = args.output_dir or (args.results_dir / asset_name)
+    output_dir.mkdir(parents=True, exist_ok=True)
     log.info("asset name: %s", asset_name)
+    log.info("sidecars -> %s   (run artifacts in %s)", output_dir, args.results_dir)
 
     # --- subject.json -------------------------------------------------------
     subject = build_subject(args.input_asset, args.strict)
     if subject is not None:
-        subject.write_standard_file(output_directory=args.output_dir)
+        subject.write_standard_file(output_directory=output_dir)
     else:
         shutil.copyfile(
-            args.input_asset / "subject.json", args.output_dir / "subject.json"
+            args.input_asset / "subject.json", output_dir / "subject.json"
         )
-    log.info("wrote %s", args.output_dir / "subject.json")
+    log.info("wrote %s", output_dir / "subject.json")
 
     # --- data_description.json ---------------------------------------------
     data_description = build_data_description(
         args.input_asset, creation_time, args.strict, asset_name
     )
-    data_description.write_standard_file(output_directory=args.output_dir)
-    log.info("wrote %s", args.output_dir / "data_description.json")
+    data_description.write_standard_file(output_directory=output_dir)
+    log.info("wrote %s", output_dir / "data_description.json")
 
     # --- processing.json ----------------------------------------------------
     experimenters = args.experimenters if args.experimenters is not None else EXPERIMENTERS
@@ -424,9 +434,9 @@ def main(argv: list[str] | None = None) -> int:
             "--experimenters."
         )
 
-    processing = build_processing(start_time, args.output_dir, experimenters, asset_name)
-    processing.write_standard_file(output_directory=args.output_dir)
-    log.info("wrote %s", args.output_dir / "processing.json")
+    processing = build_processing(start_time, args.results_dir, experimenters)
+    processing.write_standard_file(output_directory=output_dir)
+    log.info("wrote %s", output_dir / "processing.json")
 
     return 0
 
