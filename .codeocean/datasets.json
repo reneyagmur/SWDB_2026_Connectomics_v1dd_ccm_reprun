@@ -2,8 +2,20 @@
 	"version": 1,
 	"attached_datasets": [
 		{
+			"id": "34c7b535-b129-4246-b7ec-deaa86a8a76c",
+			"mount": "v1dd_1196_ccm"
+		},
+		{
 			"id": "3722628c-d77b-42c6-b733-26ff0b96b657",
 			"mount": "v1dd_v1196_soma_features"
+		},
+		{
+			"id": "89f7fe31-13d7-4aa3-a945-b8e1cbf2fc4f",
+			"mount": "v1dd_csm_celltypes_202610"
+		},
+		{
+			"id": "a1cbe7d3-8aae-4d6a-ba36-e1d963b867c8",
+			"mount": "v1dd_1512_umap"
 		},
 		{
 			"id": "aafc99cc-92ee-4d04-b152-92f1063a3268",

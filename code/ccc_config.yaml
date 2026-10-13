@@ -3,5 +3,5 @@
 # Edit this file (or set CCC_OUTPUT_ROOT) to repoint writers/readers.
 # Fallback only. code/run exports CCC_OUTPUT_ROOT pointing at an asset subdirectory
 # with a creation-datetime suffix (AIND DataRegex.DATA form), which wins over this.
-output_root: /results/409828_V1DD_CCM_materialization_1196/
+output_root: /scratch/v1dd_ccm_20261012/
 dry_run: false
