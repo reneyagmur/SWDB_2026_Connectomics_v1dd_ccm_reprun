@@ -31,4 +31,4 @@ exclude-newer = "2026-07-30T00:00:00Z"
 exclude-newer-package = {"connects-common-connectivity"=false}
 
 [tool.uv.sources]
-connects-common-connectivity = { git = "https://github.com/AllenInstitute/ConnectsCommonConnectivity.git", branch = "v1dd-ingest" }
+connects-common-connectivity = { git = "https://github.com/AllenInstitute/ConnectsCommonConnectivity.git", branch = "release-ingest" }

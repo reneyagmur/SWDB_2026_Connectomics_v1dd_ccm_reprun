@@ -10,6 +10,10 @@
 			"mount": "v1dd_v1196_soma_features"
 		},
 		{
+			"id": "89f7fe31-13d7-4aa3-a945-b8e1cbf2fc4f",
+			"mount": "v1dd_csm_celltypes_202610"
+		},
+		{
 			"id": "a1cbe7d3-8aae-4d6a-ba36-e1d963b867c8",
 			"mount": "v1dd_1512_umap"
 		},
